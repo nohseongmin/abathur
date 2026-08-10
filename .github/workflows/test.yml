@@ -20,5 +20,5 @@ jobs:
       - run: pytest -q
       - name: 문서의 실측 표가 최신인지 확인
         run: |
-          python -m gaejosik bench --format markdown > /tmp/bench.md
+          python -m abathur bench --format markdown > /tmp/bench.md
           diff -u BENCH.md /tmp/bench.md

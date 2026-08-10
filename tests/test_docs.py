@@ -6,12 +6,12 @@
 import re
 from pathlib import Path
 
-from gaejosik import bench
-from gaejosik.rules import ANTI_RULES, CLAIMED_SAVING_PCT
-from gaejosik.tokenizer import TiktokenCounter
+from abathur import bench
+from abathur.rules import ANTI_RULES, CLAIMED_SAVING_PCT
+from abathur.tokenizer import TiktokenCounter
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILL_PATH = ROOT / "skills" / "gaejosik" / "SKILL.md"
+SKILL_PATH = ROOT / "skills" / "abathur" / "SKILL.md"
 README_PATH = ROOT / "README.md"
 
 
@@ -27,7 +27,7 @@ def test_skill_frontmatter_has_name_and_description():
     text = read_skill()
     assert text.startswith("---\n")
     frontmatter = text.split("---", 2)[1]
-    assert re.search(r"^name:\s*gaejosik\s*$", frontmatter, re.M)
+    assert re.search(r"^name:\s*abathur\s*$", frontmatter, re.M)
     assert re.search(r"^description:", frontmatter, re.M)
 
 

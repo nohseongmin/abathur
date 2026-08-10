@@ -6,8 +6,8 @@
 
 import pytest
 
-from gaejosik import bench
-from gaejosik.rules import (
+from abathur import bench
+from abathur.rules import (
     ANTI_RULES,
     CLAIMED_SAVING_PCT,
     MARGINAL_RULES,
@@ -15,7 +15,7 @@ from gaejosik.rules import (
     RULES,
     SAMPLES,
 )
-from gaejosik.tokenizer import TiktokenCounter
+from abathur.tokenizer import TiktokenCounter
 
 
 @pytest.fixture(scope="module")
@@ -101,6 +101,22 @@ def test_arrow_sign_depends_on_what_it_replaces(report):
     punct = {m.id: m for m in report.anti_rules}["arrow_for_punct"]
     assert conj.saved > 0, "접속사 치환은 이득이어야 한다"
     assert punct.saved == 0, "구두점 치환은 동률이어야 한다"
+
+
+def test_studies_have_rows(report):
+    assert report.studies
+    for study in report.studies:
+        assert study.rows, f"{study.id}: 원자료가 비었다"
+    ids = [row.id for study in report.studies for row in study.rows]
+    assert len(ids) == len(set(ids))
+
+
+def test_arrow_gain_is_korean_only(report):
+    """화살표 이득은 한국어 접속사에서만 난다 — 영어 대조군은 0이어야 한다."""
+    rows = {m.name: m for s in report.studies if s.id == "arrow_alternatives" for m in s.rows}
+    assert rows["영어 대조"].saved == 0
+    assert all(rows[k].saved > 0 for k in rows if k.startswith("접속사"))
+    assert all(rows[k].saved == 0 for k in rows if k.startswith("구두점"))
 
 
 @pytest.mark.parametrize("encoding", ["o200k_base", "cl100k_base"])

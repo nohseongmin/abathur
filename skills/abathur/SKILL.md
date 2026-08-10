@@ -1,10 +1,10 @@
 ---
-name: gaejosik
+name: abathur
 description: >
   한국어 출력을 개조식으로 압축해 출력 토큰을 65% 이상(실측) 줄인다. 기술적 정확도는 그대로.
   강도: lite, full(기본), ultra.
-  사용자가 "개조식", "간결하게", "짧게", "토큰 아껴", "토큰 절약"이라고 하거나 /gaejosik을 부르면 사용.
-  한국어로 대화 중 토큰 효율이 요구되면 자동 적용.
+  사용자가 "아바투르", "개조식", "간결하게", "짧게", "토큰 아껴", "토큰 절약"이라고 하거나
+  /abathur를 부르면 사용. 한국어로 대화 중 토큰 효율이 요구되면 자동 적용.
 ---
 
 한국어는 같은 의미를 영어보다 1.7배 많은 토큰으로 쓴다(실측). 출력 토큰은 입력보다 비싸다.
@@ -14,7 +14,7 @@ description: >
 
 매 응답 적용. 턴이 길어져도 원복 없음. 애매하면 유지. 해제는 "개조식 끄기" / "평소대로"만.
 
-기본 **full**. 전환: `/gaejosik lite|full|ultra`.
+기본 **full**. 전환: `/abathur lite|full|ultra`.
 
 ## 규칙
 
@@ -94,7 +94,7 @@ description: >
 모든 규칙은 tiktoken `o200k_base`로 실측했다. 수치 재현:
 
 ```bash
-python -m gaejosik bench
+python -m abathur bench
 ```
 
 Claude의 토크나이저는 비공개라 o200k_base는 프록시다. `ANTHROPIC_API_KEY`가 있으면 `--anthropic`으로 실제 Claude 토큰 수를 잴 수 있다.

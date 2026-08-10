@@ -1,4 +1,4 @@
-"""gaejosik CLI — 규칙 실측(bench)과 토큰 세기(count)."""
+"""abathur CLI — 규칙 실측(bench)과 토큰 세기(count)."""
 
 from __future__ import annotations
 
@@ -71,7 +71,7 @@ def cmd_count(args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="gaejosik",
+        prog="abathur",
         description="한국어 출력 토큰 절감 규칙을 실측하고 검증한다.",
     )
     sub = parser.add_subparsers(dest="command", required=True)

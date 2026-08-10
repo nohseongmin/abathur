@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import statistics
 from dataclasses import dataclass, field
 
 from .rules import (
@@ -10,6 +11,7 @@ from .rules import (
     MARGINAL_RULES,
     RULES,
     SAMPLES,
+    STUDIES,
     Rule,
     Sample,
 )
@@ -46,6 +48,18 @@ class LangMeasurement:
         return self.ko_tokens / self.en_tokens if self.en_tokens else 0.0
 
 
+@dataclass(frozen=True)
+class StudyResult:
+    id: str
+    title: str
+    note: str
+    rows: tuple[Measurement, ...]
+
+    @property
+    def median_ratio(self) -> float:
+        return statistics.median(m.ratio for m in self.rows)
+
+
 @dataclass
 class Report:
     counter_name: str
@@ -54,6 +68,7 @@ class Report:
     anti_rules: list[Measurement] = field(default_factory=list)
     samples: list[Measurement] = field(default_factory=list)
     languages: list[LangMeasurement] = field(default_factory=list)
+    studies: list[StudyResult] = field(default_factory=list)
 
     @property
     def sample_before(self) -> int:
@@ -97,6 +112,19 @@ def run(counter: TokenCounter) -> Report:
         languages=[
             LangMeasurement(ko, counter.count(ko), counter.count(en))
             for ko, en in LANG_PAIRS
+        ],
+        studies=[
+            StudyResult(
+                s.id, s.title, s.note,
+                tuple(
+                    Measurement(
+                        id=f"{s.id}:{label}", name=label, category="study",
+                        before=counter.count(before), after=counter.count(after),
+                    )
+                    for label, before, after in s.pairs
+                ),
+            )
+            for s in STUDIES
         ],
     )
 
@@ -160,6 +188,22 @@ def render_markdown(report: Report) -> str:
         for m in report.languages
     ]
     lines.append(f"| **평균** | | | **{report.mean_lang_multiple:.2f}x** |")
+
+    lines += ["", "## 부록 — 원자료 실험", ""]
+    for study in report.studies:
+        lines += [
+            f"### {study.title}",
+            "",
+            study.note,
+            "",
+            "| 항목 | 원문 토큰 | 축약 토큰 | 절감 |",
+            "|---|---:|---:|---:|",
+        ]
+        lines += [_row(m) for m in study.rows]
+        lines += [
+            f"| **중앙값** | | | **{study.median_ratio * 100:.1f}%** |",
+            "",
+        ]
     return "\n".join(lines)
 
 
@@ -209,4 +253,13 @@ def to_dict(report: Report) -> dict:
         "samples": [pack(m) for m in report.samples],
         "overall_ratio": round(report.overall_ratio, 4),
         "korean_token_multiple": round(report.mean_lang_multiple, 4),
+        "studies": [
+            {
+                "id": s.id,
+                "title": s.title,
+                "median_ratio": round(s.median_ratio, 4),
+                "rows": [pack(m) for m in s.rows],
+            }
+            for s in report.studies
+        ],
     }

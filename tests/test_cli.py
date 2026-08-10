@@ -4,8 +4,8 @@ import json
 
 import pytest
 
-from gaejosik import cli
-from gaejosik.tokenizer import AnthropicCounter
+from abathur import cli
+from abathur.tokenizer import AnthropicCounter
 
 
 def test_bench_json_shape(capsys):
