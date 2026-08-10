@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "gaejosik",
+  "description": "한국어 출력 토큰 절감 스킬. 개조식으로 답해 출력 토큰을 65% 이상(실측) 줄인다.",
+  "owner": {
+    "name": "nohseongmin",
+    "url": "https://github.com/nohseongmin"
+  },
+  "plugins": [
+    {
+      "name": "gaejosik",
+      "description": "공문서처럼 답한다. 한국어 출력 토큰 65%+ 절감(실측). 기술적 정확도 유지.",
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}
