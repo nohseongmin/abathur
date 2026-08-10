@@ -10,6 +10,7 @@ from gaejosik import bench
 from gaejosik.rules import (
     ANTI_RULES,
     CLAIMED_SAVING_PCT,
+    MARGINAL_RULES,
     MIN_RULE_SAVING_RATIO,
     RULES,
     SAMPLES,
@@ -27,8 +28,17 @@ def test_rule_corpus_is_not_empty():
 
 
 def test_rule_ids_unique():
-    ids = [r.id for r in RULES] + [r.id for r in ANTI_RULES]
+    ids = [r.id for r in RULES + MARGINAL_RULES + ANTI_RULES]
     assert len(ids) == len(set(ids))
+
+
+def test_marginal_rules_are_real_but_small(report):
+    """이득이 실재하되 기준 미만이어야 한다. 양쪽 어디로도 뭉개지 않는다."""
+    for m in report.marginal_rules:
+        assert 0 < m.ratio < MIN_RULE_SAVING_RATIO, (
+            f"{m.name}: {m.ratio * 100:.1f}% — 기준을 넘으면 RULES로, "
+            "이득이 없으면 ANTI_RULES로 옮겨라."
+        )
 
 
 def test_every_rule_actually_saves_tokens(report):
@@ -75,17 +85,22 @@ def test_korean_costs_more_tokens_than_english(report):
         assert m.ko_tokens > m.en_tokens, f"한국어가 더 싼 반례: {m.korean}"
 
 
-def test_arrow_and_spacing_are_net_losses(report):
-    """가장 흔한 오해 두 가지는 이득이 아니라 손해라는 것까지 확인한다."""
+def test_spacing_removal_is_a_net_loss(report):
+    """띄어쓰기를 지우면 글자는 줄고 토큰은 늘어난다."""
     by_id = {m.id: m for m in report.anti_rules}
-    assert by_id["arrow"].saved < 0
     assert by_id["spacing"].saved < 0
 
 
-def test_ending_swap_saves_nothing(report):
-    """어미 교체 0% — 스킬이 내세우는 대표 반례."""
-    by_id = {m.id: m for m in report.anti_rules}
-    assert by_id["ending_swap"].saved == 0
+def test_arrow_sign_depends_on_what_it_replaces(report):
+    """화살표는 접속사를 대체하면 이득, 구두점을 대체하면 무이득.
+
+    '화살표는 항상 이득/항상 손해' 양쪽 주장이 다 틀렸다는 것이 핵심 발견이라
+    두 경우를 함께 고정한다.
+    """
+    conj = {m.id: m for m in report.marginal_rules}["conj_arrow"]
+    punct = {m.id: m for m in report.anti_rules}["arrow_for_punct"]
+    assert conj.saved > 0, "접속사 치환은 이득이어야 한다"
+    assert punct.saved == 0, "구두점 치환은 동률이어야 한다"
 
 
 @pytest.mark.parametrize("encoding", ["o200k_base", "cl100k_base"])

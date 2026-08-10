@@ -4,7 +4,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from .rules import ANTI_RULES, LANG_PAIRS, RULES, SAMPLES, Rule, Sample
+from .rules import (
+    ANTI_RULES,
+    LANG_PAIRS,
+    MARGINAL_RULES,
+    RULES,
+    SAMPLES,
+    Rule,
+    Sample,
+)
 from .tokenizer import TokenCounter
 
 
@@ -42,6 +50,7 @@ class LangMeasurement:
 class Report:
     counter_name: str
     rules: list[Measurement] = field(default_factory=list)
+    marginal_rules: list[Measurement] = field(default_factory=list)
     anti_rules: list[Measurement] = field(default_factory=list)
     samples: list[Measurement] = field(default_factory=list)
     languages: list[LangMeasurement] = field(default_factory=list)
@@ -82,6 +91,7 @@ def run(counter: TokenCounter) -> Report:
     return Report(
         counter_name=counter.name,
         rules=[_measure(counter, r) for r in RULES],
+        marginal_rules=[_measure(counter, r) for r in MARGINAL_RULES],
         anti_rules=[_measure(counter, r) for r in ANTI_RULES],
         samples=[_measure(counter, s) for s in SAMPLES],
         languages=[
@@ -108,6 +118,16 @@ def render_markdown(report: Report) -> str:
         "|---|---:|---:|---:|",
     ]
     lines += [_row(m) for m in report.rules]
+    lines += [
+        "",
+        "### 이득이 실재하나 작은 규칙",
+        "",
+        "쓰지 말라는 뜻이 아니라, 여기부터 손대면 순서가 틀렸다는 뜻이다.",
+        "",
+        "| 규칙 | 원문 토큰 | 개조식 토큰 | 절감 |",
+        "|---|---:|---:|---:|",
+    ]
+    lines += [_row(m) for m in report.marginal_rules]
     lines += [
         "",
         "### 측정 결과 기각된 규칙 (안티규칙)",
@@ -149,6 +169,11 @@ def render_text(report: Report) -> str:
         f"  {m.name:24s} {m.before:4d} -> {m.after:4d}  {m.ratio * 100:5.1f}%"
         for m in report.rules
     ]
+    lines += ["", "[이득 작은 규칙 — 우선순위 낮음]"]
+    lines += [
+        f"  {m.name:24s} {m.before:4d} -> {m.after:4d}  {m.ratio * 100:5.1f}%"
+        for m in report.marginal_rules
+    ]
     lines += ["", "[기각된 안티규칙 — 쓰지 말 것]"]
     lines += [
         f"  {m.name:24s} {m.before:4d} -> {m.after:4d}  {m.ratio * 100:5.1f}%"
@@ -179,6 +204,7 @@ def to_dict(report: Report) -> dict:
     return {
         "tokenizer": report.counter_name,
         "rules": [pack(m) for m in report.rules],
+        "marginal_rules": [pack(m) for m in report.marginal_rules],
         "anti_rules": [pack(m) for m in report.anti_rules],
         "samples": [pack(m) for m in report.samples],
         "overall_ratio": round(report.overall_ratio, 4),
