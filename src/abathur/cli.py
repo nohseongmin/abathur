@@ -26,7 +26,16 @@ class CliError(Exception):
 
 def read_source(path_arg: str) -> str:
     if path_arg == "-":
-        return sys.stdin.read()
+        data = sys.stdin.buffer.read(MAX_FILE_BYTES + 1)
+        if len(data) > MAX_FILE_BYTES:
+            raise CliError(
+                f"표준입력이 너무 큽니다 (상한 {MAX_FILE_BYTES:,} bytes). "
+                "일부만 잘라서 넣으세요."
+            )
+        try:
+            return data.decode("utf-8")
+        except UnicodeDecodeError:
+            raise CliError("UTF-8로 읽을 수 없는 표준입력입니다.") from None
     path = Path(path_arg).resolve()
     if not path.is_file():
         raise CliError(f"파일이 없습니다: {path_arg}")
