@@ -52,6 +52,20 @@ def test_skill_lists_every_anti_rule():
     )
 
 
+def test_bench_md_is_current():
+    """BENCH.md가 `abathur bench --format markdown` 출력과 일치해야 한다.
+
+    손으로 갱신하는 표는 규칙이나 렌더러가 바뀌면 조용히 썩는다. README가
+    "CI가 최신 여부 검사"라고 내건 것을 실제로 검사한다.
+    """
+    generated = bench.render_markdown(bench.run(TiktokenCounter()))
+    on_disk = (ROOT / "BENCH.md").read_text(encoding="utf-8")
+    assert on_disk.rstrip("\n") == generated.rstrip("\n"), (
+        "BENCH.md가 실측과 어긋난다. "
+        "`python -m abathur bench --format markdown > BENCH.md`로 다시 생성하라."
+    )
+
+
 def test_readme_total_row_matches_measurement():
     """README의 합계 행이 실측과 어긋나면 실패한다."""
     report = bench.run(TiktokenCounter())
