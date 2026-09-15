@@ -1,6 +1,7 @@
 """CLI 동작 및 실패 처리."""
 
 import json
+import sys
 
 import pytest
 
@@ -50,6 +51,20 @@ def test_count_rejects_oversized_file(tmp_path, monkeypatch, capsys):
     target.write_text("가" * 100, encoding="utf-8")
     assert cli.main(["count", str(target)]) == 1
     assert "너무 큽니다" in capsys.readouterr().err
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="chmod으로 읽기 권한을 막을 수 없다")
+def test_count_unreadable_file_fails_cleanly(tmp_path, capsys):
+    target = tmp_path / "secret.md"
+    target.write_text("읽을 수 없어야 한다", encoding="utf-8")
+    target.chmod(0o000)
+    try:
+        assert cli.main(["count", str(target)]) == 1
+    finally:
+        target.chmod(0o644)
+    err = capsys.readouterr().err
+    assert "파일을 읽을 수 없습니다" in err
+    assert "Traceback" not in err
 
 
 def test_unknown_encoding_fails_cleanly(capsys):
