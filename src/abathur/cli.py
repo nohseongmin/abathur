@@ -39,16 +39,18 @@ def read_source(path_arg: str) -> str:
     path = Path(path_arg).resolve()
     if not path.is_file():
         raise CliError(f"파일이 없습니다: {path_arg}")
-    size = path.stat().st_size
-    if size > MAX_FILE_BYTES:
-        raise CliError(
-            f"파일이 너무 큽니다 ({size:,} bytes, 상한 {MAX_FILE_BYTES:,}). "
-            "일부만 잘라서 넣으세요."
-        )
     try:
+        size = path.stat().st_size
+        if size > MAX_FILE_BYTES:
+            raise CliError(
+                f"파일이 너무 큽니다 ({size:,} bytes, 상한 {MAX_FILE_BYTES:,}). "
+                "일부만 잘라서 넣으세요."
+            )
         return path.read_text(encoding="utf-8")
     except UnicodeDecodeError:
         raise CliError(f"UTF-8로 읽을 수 없는 파일입니다: {path_arg}") from None
+    except OSError as exc:
+        raise CliError(f"파일을 읽을 수 없습니다: {path_arg} ({exc.strerror or exc})") from None
 
 
 def cmd_bench(args: argparse.Namespace) -> int:
