@@ -70,10 +70,10 @@ def test_readme_total_row_matches_measurement():
     """README의 합계 행이 실측과 어긋나면 실패한다."""
     report = bench.run(TiktokenCounter())
     row = re.search(
-        r"\|\s*\*\*합계\*\*\s*\|\s*\*\*(\d+)\*\*\s*\|\s*\*\*(\d+)\*\*\s*\|\s*\*\*(\d+)%\*\*",
+        r"\|\s*Total\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|\s*(\d+)%\s*\|",
         README_PATH.read_text(encoding="utf-8"),
     )
-    assert row, "README에서 합계 행을 찾지 못했다"
+    assert row, "README total row not found"
     before, after, pct = (int(g) for g in row.groups())
     assert (before, after) == (report.sample_before, report.sample_after)
     assert pct == round(report.overall_ratio * 100)

@@ -1,207 +1,164 @@
-<h1 align="center">아바투르 · Abathur</h1>
+# Abathur
 
-<p align="center">
-  <strong>서열에서 군더더기 제거. 기능 보존.</strong><br>
-  한국어 LLM 출력 토큰을 실측 기반으로 압축하는 Claude Code 스킬 — 그리고 그 주장을 스스로 검증하는 도구.
-</p>
+A Claude Code skill for shortening Korean responses, with a benchmark tool to measure which edits reduce token counts.
 
-<p align="center">
-  <a href="https://github.com/nohseongmin/abathur/actions/workflows/test.yml"><img src="https://github.com/nohseongmin/abathur/actions/workflows/test.yml/badge.svg" alt="tests"></a>
-  <img src="https://img.shields.io/badge/python-3.10%2B-blue" alt="python">
-  <img src="https://img.shields.io/badge/절감-68%25%20(실측)-orange" alt="savings">
-  <img src="https://img.shields.io/badge/license-MIT-yellow" alt="license">
-</p>
+This project builds on [caveman](https://github.com/JuliusBrussee/caveman). Its contribution is a measured corpus of Korean compression rules; the author uses caveman for everyday work.
 
----
+## Measurements
 
-## 한 줄
+Five sample responses dropped from 446 to 142 tokens, a 68% reduction using tiktoken's `o200k_base`. This is a controlled benchmark, not a saving measured across real coding sessions.
 
-한국어는 같은 의미를 영어보다 **1.70배** 많은 토큰으로 쓴다. 출력 토큰은 입력보다 비싸다. 그래서 한국어 사용자는 같은 작업에 구조적으로 더 낸다. 아바투르는 답변에서 정보가 아닌 부분만 잘라내 **실측 68%**를 줄인다.
+Shorter text does not always use fewer tokens. Removing spaces increased token counts by 33% in the tested example. Replacing a written number with a digit increased them by 50%. Shortening sentence endings saved 0–43%, with a median of 17%.
 
-> **솔직히 먼저.** 이 레포는 "설치하세요" 보다 **"재봤더니 이렇더라"**에 가깝다. 저자는 실사용으로 원본 [caveman](https://github.com/JuliusBrussee/caveman)을 쓴다. 아바투르가 더하는 건 아이디어가 아니라 **한국어 규칙을 실제로 잰 데이터**다. 판단은 표를 보고.
+Most savings come from removing greetings, repetition, and closing offers. Grammar and punctuation contribute less. An arrow saves tokens when it replaces a Korean causal connector, but replacing punctuation produced no saving. The rule does not carry over to English, where `causes` already takes one token.
 
-## 왜 만들었나 — 글자 수는 토큰 수가 아니다
+See [BENCH.md](BENCH.md) for the corpus, full results, and raw experiments. Reproduce the measurements with `python -m abathur bench`.
 
-한국어 압축은 직관이 자주 틀린다. 전부 tiktoken `o200k_base` 실측이다.
+### Compression rules
 
-| 흔한 직관 | 글자 수 | 실제 토큰 |
-|---|:---:|---|
-| `토큰 만료 검사 오류` → `토큰만료검사오류` | 줄어듦 | **33% 증가** ❌ |
-| `세 단계` → `3단계` | 줄어듦 | **50% 증가** ❌ |
-| `確認`(한자) · `ㅇㅋ`(자모) · `셋파`(즉석 축약) | 줄어듦 | **0%** ❌ |
-| `추가되었습니다` → `추가됨` | 줄어듦 | 0~43%, **중앙값 17%** ⚠️ |
-| `그래서` → `→` | 줄어듦 | **이득** ✅ (접속사 한정) |
-| `.` → `→` | 같음 | **0%** ❌ |
-
-마지막 두 줄이 이 레포의 요지다. **같은 화살표 규칙이 무엇을 대체하느냐에 따라 이득이 되기도 하고 0이 되기도 한다.** 영어에서는 아예 성립하지 않는다 — `causes`도 1토큰이라 원본 caveman은 영어 화살표를 금지한다. **언어가 바뀌면 규칙의 부호가 바뀐다.**
-
-절감의 대부분은 잔재주가 아니라 **문장을 통째로 지우는 것**에서 나온다. 어미와 기호는 마지막에 손대는 것이다.
-
-## 측정 결과
-
-전체 표는 [BENCH.md](BENCH.md). 재현: `python -m abathur bench`
-
-### 규칙 — 이득이 큰 것
-
-| 규칙 | 절감 |
+| Rule | Saving |
 |---|---:|
-| 서두 인사·감사 제거 | 100% |
-| 마무리 영업멘트 제거 | 100% |
-| 도구 사용 내레이션 제거 | 100% |
-| 기술용어 한글 풀이 금지 (`응용 프로그램 프로그래밍 인터페이스` → `API`) | 76% |
-| 이모지·장식 제거 | 75% |
-| 재진술·요약 반복 제거 | 70% |
-| 헤지 표현 제거 (`~인 것 같습니다`) | 69% |
-| 우회 서술 축약 (`~할 필요가 있습니다` → `필요`) | 67% |
-| 공손 응답 제거 (`네, 알겠습니다`) | 60% |
-| 긴 외래어 → 통용 축약 (`애플리케이션` → `앱`) | 50% |
-| 군더더기 접속 부사 제거 | 46% |
-| 서술어 절단 | 36% |
-| 문맥상 자명한 조사 생략 | 33% |
-| 종결어미 축약 | 31% |
-| 외래어 → 표준 약어 (`데이터베이스` → `DB`) | 26% |
-| 개조식 명사구 전환 | 22% |
-| 번호 목록 → 대시 목록 | 18% |
+| Remove greetings and thanks | 100% |
+| Remove closing offers | 100% |
+| Remove narration of tool use | 100% |
+| Use standard technical terms such as API | 76% |
+| Remove emoji and decoration | 75% |
+| Remove repeated explanations and summaries | 70% |
+| Remove hedging | 69% |
+| Shorten indirect phrasing | 67% |
+| Remove polite acknowledgments | 60% |
+| Shorten loanwords using established forms | 50% |
+| Remove unnecessary linking adverbs | 46% |
+| Omit redundant predicates | 36% |
+| Omit particles when their meaning is clear | 33% |
+| Shorten sentence endings | 31% |
+| Replace loanwords with standard abbreviations | 26% |
+| Use noun phrases in lists | 22% |
+| Use bullets for unordered lists | 18% |
+| Replace causal connectors with arrows | 9% |
 
-### 규칙 — 이득이 작은 것
+Percentages describe individual test pairs and are not additive.
 
-쓰지 말라는 게 아니라, **여기부터 손대면 순서가 틀렸다**는 뜻이다.
+### Rejected rules
 
-| 규칙 | 절감 |
+| Rule | Saving |
 |---|---:|
-| 인과 접속사 → 화살표 | 9% |
+| Remove spaces | -33% |
+| Replace commas and periods with arrows | 0% |
+| Use Korean consonant abbreviations | 0% |
+| Use Chinese characters | 0% |
+| Invent abbreviations | 0% |
 
-### 안티규칙 — 측정으로 기각
+### Complete responses
 
-| 안 되는 짓 | 절감 |
-|---|---:|
-| 띄어쓰기 제거 | **-33%** |
-| 쉼표·마침표를 `→`로 교체 | 0% |
-| 자모 축약 (`ㅇㅋ`) | 0% |
-| 한자 표기 (`確認`) | 0% |
-| 즉석 신조 약어 (`설정 파일` → `셋파`) | 0% |
-
-### 답변 한 통 기준
-
-| 표본 | 원문 | 압축 | 절감 |
+| Sample | Original tokens | Compressed tokens | Saving |
 |---|---:|---:|---:|
-| 버그 설명 | 95 | 28 | 71% |
-| 개념 설명 | 98 | 28 | 71% |
-| 작업 보고 | 68 | 17 | 75% |
-| 작업 계획 | 84 | 24 | 71% |
-| 코드 리뷰 | 101 | 45 | 55% |
-| **합계** | **446** | **142** | **68%** |
+| Bug explanation | 95 | 28 | 71% |
+| Concept explanation | 98 | 28 | 71% |
+| Work report | 68 | 17 | 75% |
+| Work plan | 84 | 24 | 71% |
+| Code review | 101 | 45 | 55% |
+| Total | 446 | 142 | 68% |
 
-### 한국어 vs 영어 (같은 의미)
+### Korean and English
 
-| 문장 | 한국어 | 영어 | 배수 |
+These pairs express the same meaning. The average Korean-to-English token ratio in this small sample is 1.70.
+
+| Meaning | Korean tokens | English tokens | Ratio |
 |---|---:|---:|---:|
-| 이 함수는 사용자 입력을 검증하지 않습니다 | 11 | 8 | 1.38x |
-| 데이터베이스 연결을 재사용하여 오버헤드를 줄입니다 | 16 | 7 | 2.29x |
-| 테스트 42개가 모두 통과했습니다 | 11 | 6 | 1.83x |
-| 설정 파일에서 해당 항목을 찾을 수 없습니다 | 13 | 10 | 1.30x |
-| **평균** | | | **1.70x** |
+| This function does not validate user input. | 11 | 8 | 1.38x |
+| Reuse database connections to reduce overhead. | 16 | 7 | 2.29x |
+| All 42 tests passed. | 11 | 6 | 1.83x |
+| The entry was not found in the configuration file. | 13 | 10 | 1.30x |
+| Average | | | 1.70x |
 
-## 내가 두 번 틀렸다
+## Corrections to earlier results
 
-이 레포에서 가장 볼 만한 부분. 처음엔 감으로 안티규칙을 썼고, 선행 작업([cavemankorean](https://github.com/blacknabis/cavemankorean))과 대조하며 다시 재보니 **두 건이 틀렸다.**
+An initial test classified shortened sentence endings as ineffective. Expanding the sample from one sentence to twelve showed a median saving of 16.7%, with a range of 0–43%.
 
-| 처음 주장 | 재측정 | 결과 |
-|---|---|---|
-| 어미 축약 = **0% 절감** | 표본을 1개 → 12개로 늘리니 중앙값 **16.7%**, 범위 0~43% | 안티규칙에서 **규칙으로 승격** |
-| 화살표 = **-33% 손해** | 비교 대상이 틀렸다. 접속사(2~3토큰) 대체 시 **이득**, 구두점(2토큰) 대체 시 **동률** | **3단 분류로 재구성** |
+The initial arrow comparison used the wrong baseline: arrows saved tokens against causal connectors and tied against punctuation. An informal database abbreviation, previously described as ineffective, saved 50% in its test pair.
 
-세 번째로는 `데이터베이스`→`데베`가 무용할 거라 적었는데 실제로는 **50% 절감**이었다.
+The corpus now separates rules by measured saving. Tests check both classification boundaries:
 
-교훈이 규칙 자체보다 크다. **표본 1개로 규칙을 기각하면 안 되고, 비교 대상을 잘못 잡으면 부호가 뒤집힌다.** 그래서 지금은 규칙을 3단으로 나누고 분류가 틀리면 CI가 깨지게 해뒀다.
-
-```
-RULES           절감 ≥ 15%        ← 테스트가 하한 검사
-MARGINAL_RULES  0 < 절감 < 15%    ← 테스트가 양쪽 경계 검사
-ANTI_RULES      절감 ≤ 0%         ← 이득이 나면 실패 (잘못 기각한 것)
+```text
+RULES           saving >= 15%
+MARGINAL_RULES  0 < saving < 15%
+ANTI_RULES      saving <= 0%
 ```
 
-원자료 실험 4종(어미 12문장 분포, 화살표 대안 6종 + 영어 대조군, 외래어 축약 6종, 기각 후보 6종)은 전부 코드에 남아 있다. [BENCH.md 부록](BENCH.md) 참조.
+Raw experiments cover twelve sentence-ending examples, six arrow alternatives with English controls, six loanword abbreviations, and six rejected candidates. See the [BENCH.md appendix](BENCH.md).
 
-## 설치
+## Installation
 
-### 스킬로 쓰기
+### Claude Code skill
 
-```
+```text
 /plugin marketplace add nohseongmin/abathur
 /plugin install abathur
 ```
 
-"아바투르", "개조식", "짧게", "토큰 아껴"라고 하거나 `/abathur`. 강도는 `/abathur lite|full|ultra`, 해제는 "개조식 끄기".
+Use `/abathur` to enable the skill and `/abathur lite|full|ultra` to change its intensity. The exact Korean activation and deactivation phrases are listed in [SKILL.md](skills/abathur/SKILL.md).
 
-| 강도 | 내용 |
+| Mode | Behavior |
 |---|---|
-| `lite` | 인사·헤지·재진술만 제거. 존댓말과 완전한 문장 유지 |
-| `full` | 개조식 전환. 조사 생략, 서술어 절단, 장식 없음 (기본) |
-| `ultra` | 한 줄에 한 사실. 문장 대신 항목 |
+| `lite` | Remove greetings, hedging, and repetition; keep complete, polite sentences. |
+| `full` | Use compact lists, omit obvious particles and redundant predicates, and remove decoration. Default. |
+| `ultra` | Use one fact per line and list items instead of sentences. |
 
-보안 경고, 되돌릴 수 없는 작업 확인, 순서가 중요한 절차에서는 **스스로 압축을 푼다.**
+Compression relaxes for security warnings, irreversible actions, ordered procedures, and explanations that would otherwise become ambiguous.
 
-### 측정 도구로 쓰기
+### Benchmark tool
 
 ```bash
 pip install -e .
-```
-
-```bash
 python -m abathur bench
-```
-
-```bash
 python -m abathur count README.md --price-per-mtok 15
 ```
 
-`--format markdown|json`, `--encoding cl100k_base`로 대조 가능. 실제 Claude 토크나이저 수치가 필요하면(`ANTHROPIC_API_KEY` 필요):
+Use `--format markdown|json` to choose the output format or `--encoding cl100k_base` to compare encodings. To use Anthropic's token-counting API, set `ANTHROPIC_API_KEY` and run:
 
 ```bash
 python -m abathur bench --anthropic
 ```
 
-> ⚠️ `--anthropic`을 켤 때만 텍스트가 외부로 나간다. 기본 동작은 사용자 텍스트를 전송하지 않는다. 단 tiktoken이 최초 1회 BPE 인코딩 파일을 내려받는다(이후 로컬 캐시).
+Only `--anthropic` sends text to an external service. The default counter runs locally, although tiktoken downloads its BPE encoding file on first use and caches it afterward.
 
-## 한계 — 정직하게
+## Limitations
 
-- **Claude의 토크나이저는 공개되지 않았다.** 기본 측정은 tiktoken `o200k_base`(GPT-4o/5 계열) 프록시다. `cl100k_base`에서도 결론이 같은지 CI가 확인하지만, Claude에서의 정확한 수치는 `--anthropic`으로 직접 재야 한다.
-- **68%는 통제된 표본의 수치다.** 실제 세션은 코드 블록·파일 경로·에러 문자열 비중이 크고 그 부분은 압축하지 않는다. 실사용 절감률은 이보다 낮게 나오는 것이 정상이다.
-- **실사용 장기 검증은 아직 없다.** 벤치는 문장 단위 측정이지 세션 단위 A/B가 아니다.
+- Claude's tokenizer is not public. `o200k_base` is a proxy, and CI also checks `cl100k_base`. Use `--anthropic` for Claude token counts.
+- The 68% result comes from controlled examples. Code blocks, paths, and error messages are preserved, so real coding sessions may save less.
+- The benchmark measures sentences and sample responses. There is no long-term session A/B study yet.
 
-## 관련 프로젝트
+## Related projects
 
-먼저 나온 것들이 있다. 정직하게 적는다.
-
-| 프로젝트 | 접근 | 관계 |
+| Project | Approach | Relationship |
 |---|---|---|
-| [caveman](https://github.com/JuliusBrussee/caveman) | 영어 caveman 문체로 출력 압축. "사용자 언어 유지" 규칙이 있어 한국어 질문엔 한국어로 압축해 답한다 | **원류.** 측정 문화(`cfg`는 `configuration`과 같은 수로 쪼개진다)를 여기서 가져왔다. 한국어 특화 규칙·측정은 없다 |
-| [cavemankorean](https://github.com/blacknabis/cavemankorean) | 위 포크 + 한국어 규칙 블록 | **가장 가까운 선행 작업.** 조사 생략·완곡 표현 삭제·접속사→화살표는 재보니 맞았다. 다만 한국어 벤치마크가 없고(65~75%는 영어 태스크 측정치), 2026-04 포크 이후 갱신이 없다 |
-| [k-laude](https://github.com/realkim93/k-laude) | 한글 입력을 온디바이스 LLM으로 영역해 전달 | **다른 레이어**(입력 토큰). macOS 26 + Apple Silicon 전용 |
-| [tokensave](https://github.com/epoko77-ai/tokensave) | 멀티에이전트 하네스의 모델 티어·캐싱 비용 감사 | 다른 레이어(하네스 아키텍처) |
+| [caveman](https://github.com/JuliusBrussee/caveman) | Compress responses while preserving the user's language. | Basis for the project and its measurement approach. |
+| [cavemankorean](https://github.com/blacknabis/cavemankorean) | Add Korean rules to a caveman fork. | Closest prior work. Several rules were confirmed here; its reported 65–75% saving comes from English tasks. |
+| [k-laude](https://github.com/realkim93/k-laude) | Translate Korean input to English with an on-device model. | Addresses input tokens; requires macOS 26 and Apple Silicon. |
+| [tokensave](https://github.com/epoko77-ai/tokensave) | Audit model tiers and caching in multi-agent harnesses. | Addresses harness costs. |
 
-## 규칙 추가하기
+## Adding a rule
 
-1. [`src/abathur/rules.py`](src/abathur/rules.py)에 문장 쌍(`verbose`/`terse`)을 넣는다
-2. `python -m abathur bench`로 잰다
-3. 15% 이상이면 `RULES`, 0~15%면 `MARGINAL_RULES`, 이득이 없으면 `ANTI_RULES` — **효과 없는 규칙도 "해봤고 안 됐다"는 기록으로서 가치가 있다**
-4. `pytest` 통과하면 [`SKILL.md`](skills/abathur/SKILL.md)에 옮긴다
+1. Add `verbose` and `terse` pairs to [src/abathur/rules.py](src/abathur/rules.py).
+2. Run `python -m abathur bench`.
+3. Use `RULES` for savings of at least 15%, `MARGINAL_RULES` for savings between 0% and 15%, or `ANTI_RULES` for no saving.
+4. Run `pytest`, then add accepted guidance to [SKILL.md](skills/abathur/SKILL.md).
 
-표본이 1개면 기각하지 마라. 그러다 두 번 틀렸다.
+Use several examples before rejecting a rule. Keep unsuccessful experiments in the corpus so their results can be checked later.
 
-## 구조
+## Files
 
+```text
+skills/abathur/SKILL.md   Response style and exceptions
+src/abathur/rules.py      Rule corpus
+src/abathur/bench.py      Measurements
+src/abathur/cli.py        bench and count commands
+tests/                   Rule and documentation checks
+BENCH.md                 Generated benchmark tables
+BLUEPRINT.md             Design notes
 ```
-skills/abathur/SKILL.md   출력 스타일 (강도 3단, 압축 해제 예외)
-src/abathur/rules.py      규칙 코퍼스 — 단일 진실 원천
-src/abathur/bench.py      실측
-src/abathur/cli.py        bench / count
-tests/                    규칙·문서 회귀 검증
-BENCH.md                  실측 표 (CI가 최신 여부 검사)
-BLUEPRINT.md              설계 문서
-```
 
-## 라이선스
+## License
 
 MIT.
