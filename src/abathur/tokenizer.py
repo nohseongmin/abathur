@@ -46,7 +46,7 @@ class TiktokenCounter:
     def count(self, text: str) -> int:
         if not text:
             return 0
-        return len(self._encoding.encode(text))
+        return len(self._encoding.encode_ordinary(text))
 
 
 class AnthropicCounter:

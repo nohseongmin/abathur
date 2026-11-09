@@ -4,6 +4,7 @@ import json
 import sys
 
 import pytest
+import tiktoken
 
 from abathur import cli
 from abathur.tokenizer import AnthropicCounter
@@ -29,6 +30,19 @@ def test_count_file(tmp_path, capsys):
     target.write_text("테스트 42개 전부 통과", encoding="utf-8")
     assert cli.main(["count", str(target)]) == 0
     assert "토큰" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("encoding", ["o200k_base", "cl100k_base"])
+def test_count_special_token_text_as_ordinary_text(tmp_path, capsys, encoding):
+    text = "예시: <|endoftext|> 뒤에도 일반 텍스트가 있습니다."
+    target = tmp_path / "sample.md"
+    target.write_text(text, encoding="utf-8")
+    expected = len(tiktoken.get_encoding(encoding).encode(text, disallowed_special=()))
+
+    assert cli.main(["count", str(target), "--encoding", encoding]) == 0
+    captured = capsys.readouterr()
+    assert captured.out == f"{expected} 토큰 ({encoding}, {len(text)}자)\n"
+    assert captured.err == ""
 
 
 def test_count_with_price(tmp_path, capsys):
