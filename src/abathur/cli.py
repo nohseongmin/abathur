@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -68,6 +69,10 @@ def cmd_bench(args: argparse.Namespace) -> int:
 
 
 def cmd_count(args: argparse.Namespace) -> int:
+    if args.price_per_mtok is not None and (
+        not math.isfinite(args.price_per_mtok) or args.price_per_mtok < 0
+    ):
+        raise CliError("단가는 유한한 0 이상의 숫자여야 합니다.")
     counter = build_counter(
         args.encoding, use_anthropic=args.anthropic, model=args.model
     )

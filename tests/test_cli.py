@@ -45,11 +45,24 @@ def test_count_special_token_text_as_ordinary_text(tmp_path, capsys, encoding):
     assert captured.err == ""
 
 
-def test_count_with_price(tmp_path, capsys):
+@pytest.mark.parametrize("price", ["0", "15"])
+def test_count_with_price(tmp_path, capsys, price):
     target = tmp_path / "sample.md"
     target.write_text("테스트 42개 전부 통과", encoding="utf-8")
-    assert cli.main(["count", str(target), "--price-per-mtok", "15"]) == 0
-    assert "비용 환산" in capsys.readouterr().out
+    assert cli.main(["count", str(target), "--price-per-mtok", price]) == 0
+    captured = capsys.readouterr()
+    assert "비용 환산: $" in captured.out
+    assert captured.err == ""
+
+
+@pytest.mark.parametrize("price", ["-1", "nan", "inf"])
+def test_count_rejects_invalid_price(tmp_path, capsys, price):
+    target = tmp_path / "sample.md"
+    target.write_text("테스트 42개 전부 통과", encoding="utf-8")
+    assert cli.main(["count", str(target), "--price-per-mtok", price]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == "오류: 단가는 유한한 0 이상의 숫자여야 합니다.\n"
 
 
 def test_count_missing_file_fails_cleanly(capsys):
